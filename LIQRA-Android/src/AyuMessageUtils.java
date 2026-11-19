@@ -193,7 +193,7 @@ public final class AyuMessageUtils {
         } else {
             boolean channel = false;
             try {
-                TLRPC.Chat chat = MessagesController.getInstance(account).getChat((int) -id);
+                TLRPC.Chat chat = MessagesController.getInstance(account).getChat(Long.valueOf(-id));
                 channel = chat != null && chat.channel;
             } catch (Throwable ignored) { }
             className = channel ? "org.telegram.tgnet.TLRPC$TL_peerChannel" : "org.telegram.tgnet.TLRPC$TL_peerChat";
