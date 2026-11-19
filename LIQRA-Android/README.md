@@ -12,3 +12,18 @@ See the project setup instructions in the LIQRA Android Source Kit archive. Befo
 - Application ID: com.liqra.messenger
 - Base source: https://github.com/DrKLO/Telegram
 - Build: :TMessagesProj_App:assembleAfatDebug
+
+
+## Автоматическая сборка APK через GitHub Actions
+
+Workflow добавлен: `.github/workflows/build-liqra.yml`. Он скачивает официальный исходный код Telegram Android с подмодулями, применяет LIQRA branding, собирает debug APK и прикрепляет его к запуску как artifact.
+
+Перед первым запуском добавь в **Settings → Secrets and variables → Actions → New repository secret** три секрета:
+
+- `LIQRA_API_ID` — числовой Telegram API ID.
+- `LIQRA_API_HASH` — Telegram API hash.
+- `LIQRA_GOOGLE_SERVICES_JSON_BASE64` — содержимое файла `google-services.json`, закодированное в Base64. Firebase-конфигурация должна содержать Android-приложения с ID `com.liqra.messenger` и `com.liqra.messenger.beta`.
+
+После добавления секретов открой **Actions → Build LIQRA APK → Run workflow**. APK будет доступен в разделе Artifacts завершённого запуска. Любое изменение в `LIQRA-Android/**` также запускает сборку автоматически.
+
+Это debug APK для тестирования, не подписанный production-релиз. Liquid Glass пока добавлен как ресурсная основа, а не как полностью переработанный интерфейс всех экранов. Функции AyuGram в этой сборке не заявлены.
