@@ -1,15 +1,33 @@
-# TT MOD
+# Chromium UA (Windows x64)
 
-Android wrapper project (Kotlin) with a TikTok web feed and local settings.
+Офіційний Chromium із вихідного коду Chromium Project, який завантажується під час налаштування через `depot_tools`.
 
-## Included
-- TikTok website opened in an in-app WebView.
-- Region preference defaults to Ukraine (UA); selectable local region setting.
-- Basic appearance preference and extra settings screen.
-- GitHub Actions workflow builds a debug APK.
+## Що робить збірка
+- Встановлює українську мову інтерфейсу через параметри запуску Chromium.
+- Виставляє українську першою мовою прийняття контенту.
+- Не вимикає вбудований механізм перекладу Chromium; для сторінок іншими мовами браузер може пропонувати переклад українською.
+- Збирає 64-бітний Release `chrome.exe`.
 
-## Important limitations
-This is an independent wrapper, not a modified or official TikTok application. The saved region is a local app preference and does not spoof TikTok server-side region, SIM, IP, or account signals. TikTok controls its own feed and features. This starter does not remove ads or bypass watermark/download restrictions.
+## Вимоги
+- Windows 10/11 x64.
+- Git for Windows.
+- Visual Studio 2022 з workload **Desktop development with C++** та Windows 10/11 SDK.
+- Достатньо вільного місця: повний checkout Chromium і build output займають багато десятків гігабайтів (часто понад 100 GB).
+- Стабільне швидке інтернет-з'єднання.
 
-## Build
-Run gradle assembleDebug with JDK 17 and Gradle 8.9, or run the GitHub Actions workflow named Build TT MOD APK. The output is app/build/outputs/apk/debug/app-debug.apk.
+## Запуск
+1. Встановіть Git та Visual Studio 2022 із C++ workload.
+2. Запустіть `setup.bat` від звичайного користувача (не потрібно запускати від адміністратора).
+3. Дочекайтеся завершення синхронізації та компіляції.
+4. Запустіть `run-uk.bat`.
+
+Результат: `chromium\src\out\Release\chrome.exe`.
+
+## Повторна збірка
+Запустіть `build.bat`.
+
+## Важливо про переклад
+Chromium має вбудовану функцію перекладу, але фактична поява запиту залежить від визначення мови сторінки, доступності служби перекладу та налаштувань користувача. Скрипт задає українську як мову браузера та не вимикає переклад. Це не гарантує примусове відображення банера на кожній сторінці.
+
+## Джерело
+Офіційна інструкція: https://chromium.googlesource.com/chromium/src/+/main/docs/windows_build_instructions.md
