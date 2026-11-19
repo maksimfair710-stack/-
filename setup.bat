@@ -30,7 +30,7 @@ set DEPOT_TOOLS_UPDATE=1
 if not exist "chromium\src\.gclient" (
   echo [2/5] Fetching official Chromium source. This is a very large download.
   cd /d "%CD%\chromium"
-  fetch --nohooks chromium
+  fetch --nohooks --no-history chromium
   if errorlevel 1 goto fail
 ) else (
   echo [2/5] Chromium source already exists; skipping fetch.
