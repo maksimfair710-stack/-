@@ -1,8 +1,10 @@
-name: Build LIQRA APK
+name: Build LIQRA Android (AyuGram)
 
 on:
   workflow_dispatch:
   push:
+    branches:
+      - liqra-android-ayugram
     paths:
       - "LIQRA-Android/**"
       - ".github/workflows/build-liqra.yml"
@@ -11,137 +13,88 @@ permissions:
   contents: read
 
 concurrency:
-  group: liqra-android-build
+  group: liqra-android-ayugram-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
-    name: Build LIQRA Android APK
+    name: Build LIQRA APK from AyuGram4A
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 150
     steps:
       - name: Checkout LIQRA build configuration
         uses: actions/checkout@v4
 
-      - name: Validate required secrets
+      - name: Validate Telegram API secrets
         env:
           LIQRA_API_ID: ${{ secrets.LIQRA_API_ID }}
           LIQRA_API_HASH: ${{ secrets.LIQRA_API_HASH }}
-          LIQRA_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.LIQRA_GOOGLE_SERVICES_JSON_BASE64 }}
         run: |
-          test -n "$LIQRA_API_ID" || { echo "::error::Add repository secret LIQRA_API_ID"; exit 1; }
-          test -n "$LIQRA_API_HASH" || { echo "::error::Add repository secret LIQRA_API_HASH"; exit 1; }
+          test -n "$LIQRA_API_ID" || { echo "::error::Missing repository secret LIQRA_API_ID"; exit 1; }
+          test -n "$LIQRA_API_HASH" || { echo "::error::Missing repository secret LIQRA_API_HASH"; exit 1; }
+          case "$LIQRA_API_ID" in *[!0-9]*) echo "::error::LIQRA_API_ID must be numeric"; exit 1;; esac
 
-      - name: Set up Java
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+          cache: gradle
 
-      - name: Bootstrap Android SDK command-line tools
-        run: |
-          SDK_ROOT="$RUNNER_TEMP/android-sdk"
-          mkdir -p "$SDK_ROOT/cmdline-tools"
-          curl -fL --retry 3 "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -o "$RUNNER_TEMP/android-cmdline-tools.zip"
-          unzip -q "$RUNNER_TEMP/android-cmdline-tools.zip" -d "$RUNNER_TEMP/android-cmdline-tools"
-          mv "$RUNNER_TEMP/android-cmdline-tools/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
-          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
-          echo "$SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK and NDK
+      - name: Install AyuGram Android toolchain
         run: |
           yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools" "ndk;27.2.12479018" "cmake;3.22.1"
+          sdkmanager \
+            "platforms;android-33" \
+            "build-tools;33.0.1" \
+            "platform-tools" \
+            "ndk;21.4.7075529" \
+            "cmake;3.10.2.4988404"
 
-      - name: Clone Telegram Android source
+      - name: Clone official open-source AyuGram4A base (without private submodule)
+        env:
+          AYUGRAM_COMMIT: "7013145676d36d82ee13c02a89f72097b7490dcd"
         run: |
-          git clone --depth 1 --recurse-submodules --shallow-submodules https://github.com/DrKLO/Telegram.git "$RUNNER_TEMP/LIQRA-Android"
-          cd "$RUNNER_TEMP/LIQRA-Android"
-          git submodule update --init --recursive --depth=1
+          git clone --filter=blob:none https://github.com/AyuGram/AyuGram4A.git "$RUNNER_TEMP/LIQRA-Android"
+          git -C "$RUNNER_TEMP/LIQRA-Android" fetch --depth 1 origin "$AYUGRAM_COMMIT"
+          git -C "$RUNNER_TEMP/LIQRA-Android" checkout --detach "$AYUGRAM_COMMIT"
+          echo "AyuGram source commit: $(git -C "$RUNNER_TEMP/LIQRA-Android" rev-parse HEAD)"
 
-      - name: Apply LIQRA branding and private build configuration
+      - name: Apply LIQRA identity and open-source compatibility layer
         env:
           LIQRA_API_ID: ${{ secrets.LIQRA_API_ID }}
           LIQRA_API_HASH: ${{ secrets.LIQRA_API_HASH }}
-          LIQRA_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.LIQRA_GOOGLE_SERVICES_JSON_BASE64 }}
         run: |
-          python3 - <<'PY'
-          import os, re, base64, pathlib, sys
-          root = pathlib.Path(os.environ["RUNNER_TEMP"]) / "LIQRA-Android"
-          api_id = os.environ["LIQRA_API_ID"].strip()
-          api_hash = os.environ["LIQRA_API_HASH"].strip()
-          if not api_id.isdigit() or not api_hash:
-              raise SystemExit("LIQRA_API_ID must be numeric and LIQRA_API_HASH must be non-empty")
+          bash LIQRA-Android/patch-ayugram.sh "$RUNNER_TEMP/LIQRA-Android"
+          mkdir -p "$RUNNER_TEMP/LIQRA-Android"
+          cat > "$RUNNER_TEMP/LIQRA-Android/API_KEYS" <<EOF
+          APP_ID = $LIQRA_API_ID
+          APP_HASH = "$LIQRA_API_HASH"
+          MAPS_V2_API = ""
+          EOF
 
-          build_vars = root / "TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java"
-          text = build_vars.read_text(encoding="utf-8")
-          replacements = [
-              (r"public static int APP_ID\s*=\s*\d+\s*;", f"public static int APP_ID = {api_id};"),
-              (r'public static String APP_HASH\s*=\s*"[^"]*"\s*;', f'public static String APP_HASH = "{api_hash}";'),
-              (r"public static boolean CHECK_UPDATES\s*=\s*true\s*;", "public static boolean CHECK_UPDATES = false;"),
-              (r"public static boolean SUPPORTS_PASSKEYS\s*=\s*true\s*;", "public static boolean SUPPORTS_PASSKEYS = false;"),
-          ]
-          for pattern, replacement in replacements:
-              text, count = re.subn(pattern, replacement, text, count=1)
-              if count != 1:
-                  raise SystemExit(f"Could not patch upstream BuildVars setting: {pattern}")
-          text = text.replace('"org.telegram.messenger.beta"', '"com.liqra.messenger.beta"')
-          build_vars.write_text(text, encoding="utf-8")
-
-          props = root / "gradle.properties"
-          ptext = props.read_text(encoding="utf-8")
-          ptext, count = re.subn(r"(?m)^APP_PACKAGE=.*$", "APP_PACKAGE=com.liqra.messenger", ptext, count=1)
-          if count != 1:
-              raise SystemExit("Could not find APP_PACKAGE in gradle.properties")
-          props.write_text(ptext, encoding="utf-8")
-
-          strings_root = root / "TMessagesProj/src/main/res"
-          changed = 0
-          for file in strings_root.rglob("strings.xml"):
-              s = file.read_text(encoding="utf-8")
-              ns = re.sub(r'<string\s+name="AppName">.*?</string>', '<string name="AppName">LIQRA</string>', s)
-              ns = re.sub(r'<string\s+name="AppNameBeta">.*?</string>', '<string name="AppNameBeta">LIQRA Beta</string>', ns)
-              if ns != s:
-                  file.write_text(ns, encoding="utf-8")
-                  changed += 1
-          if not changed:
-              raise SystemExit("Could not find AppName resources; upstream layout may have changed")
-
-          firebase_b64 = os.environ.get("LIQRA_GOOGLE_SERVICES_JSON_BASE64", "").strip()
-          if firebase_b64:
-              firebase = base64.b64decode(firebase_b64, validate=True)
-              (root / "TMessagesProj/google-services.json").write_bytes(firebase)
-              print("Firebase configuration applied.")
-          else:
-              print("Firebase secret not set; building without Firebase configuration.")
-
-          # Add a small LIQRA glass resource foundation without removing upstream notices.
-          res = root / "TMessagesProj/src/main/res"
-          (res / "values").mkdir(parents=True, exist_ok=True)
-          (res / "values/liqra_glass_colors.xml").write_text(
-              '<resources><color name="liqra_glass_fill">#D91A2940</color>'
-              '<color name="liqra_glass_stroke">#66FFFFFF</color>'
-              '<color name="liqra_glass_accent">#FF8ABEFF</color></resources>', encoding="utf-8")
-          (res / "drawable").mkdir(parents=True, exist_ok=True)
-          (res / "drawable/liqra_glass_panel.xml").write_text(
-              '<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">'
-              '<corners android:radius="24dp"/><solid android:color="@color/liqra_glass_fill"/>'
-              '<stroke android:width="1dp" android:color="@color/liqra_glass_stroke"/></shape>', encoding="utf-8")
-          print("LIQRA branding and build configuration applied.")
-          PY
-
-      - name: Build debug APK
+      - name: Build universal debug APK
         working-directory: ${{ runner.temp }}/LIQRA-Android
         run: |
           chmod +x ./gradlew
-          ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --stacktrace
+          ./gradlew :TMessagesProj:assembleAfatDebug --no-daemon --stacktrace
 
-      - name: Upload APK artifact
+      - name: Verify APK output
+        working-directory: ${{ runner.temp }}/LIQRA-Android
+        run: |
+          find TMessagesProj/build/outputs/apk -type f -name '*.apk' -print
+          test -n "$(find TMessagesProj/build/outputs/apk -type f -name '*.apk' -print -quit)" || {
+            echo "::error::Gradle completed without producing an APK"
+            exit 1
+          }
+
+      - name: Upload LIQRA APK
         uses: actions/upload-artifact@v4
         with:
-          name: LIQRA-Android-debug
-          path: ${{ runner.temp }}/LIQRA-Android/TMessagesProj_App/build/outputs/apk/afat/debug/*.apk
+          name: LIQRA-AyuGram-Android-debug
+          path: ${{ runner.temp }}/LIQRA-Android/TMessagesProj/build/outputs/apk/afat/debug/*.apk
           if-no-files-found: error
           retention-days: 14
