@@ -31,7 +31,6 @@ jobs:
         run: |
           test -n "$LIQRA_API_ID" || { echo "::error::Add repository secret LIQRA_API_ID"; exit 1; }
           test -n "$LIQRA_API_HASH" || { echo "::error::Add repository secret LIQRA_API_HASH"; exit 1; }
-          test -n "$LIQRA_GOOGLE_SERVICES_JSON_BASE64" || { echo "::error::Add repository secret LIQRA_GOOGLE_SERVICES_JSON_BASE64"; exit 1; }
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -102,8 +101,13 @@ jobs:
           if not changed:
               raise SystemExit("Could not find AppName resources; upstream layout may have changed")
 
-          firebase = base64.b64decode(os.environ["LIQRA_GOOGLE_SERVICES_JSON_BASE64"], validate=True)
-          (root / "TMessagesProj/google-services.json").write_bytes(firebase)
+          firebase_b64 = os.environ.get("LIQRA_GOOGLE_SERVICES_JSON_BASE64", "").strip()
+          if firebase_b64:
+              firebase = base64.b64decode(firebase_b64, validate=True)
+              (root / "TMessagesProj/google-services.json").write_bytes(firebase)
+              print("Firebase configuration applied.")
+          else:
+              print("Firebase secret not set; building without Firebase configuration.")
 
           # Add a small LIQRA glass resource foundation without removing upstream notices.
           res = root / "TMessagesProj/src/main/res"
