@@ -1,29 +1,35 @@
-# LIQRA — Android source kit
+# LIQRA — Android (AyuGram4A)
 
-This folder contains the LIQRA Android setup package metadata.
+This branch contains the Android build configuration for LIQRA.
 
-## Important
-The full Android project is not stored in this repository yet. The setup kit downloads the official Telegram Android source and its submodules on the Windows PC, then applies LIQRA branding.
+## Source base
 
-See the project setup instructions in the LIQRA Android Source Kit archive. Before publishing, API credentials have been removed from the public configuration. Add your own Telegram API ID and API hash locally; do not commit private credentials.
+- Upstream: https://github.com/AyuGram/AyuGram4A
+- Branch: `rewrite`
+- Pinned upstream commit: `7013145676d36d82ee13c02a89f72097b7490dcd`
+- AyuGram4A is based on exteraGram.
+- The private AyuGram proprietary submodule is deliberately not fetched.
+- LIQRA provides an open-source replacement for the missing `AyuMessageUtils` adapter.
 
-## Build target
-- App name: LIQRA
-- Application ID: com.liqra.messenger
-- Base source: https://github.com/DrKLO/Telegram
-- Build: :TMessagesProj_App:assembleAfatDebug
+## Build
 
+GitHub Actions workflow: `.github/workflows/build-liqra.yml`
 
-## Автоматическая сборка APK через GitHub Actions
-
-Workflow добавлен: `.github/workflows/build-liqra.yml`. Он скачивает официальный исходный код Telegram Android с подмодулями, применяет LIQRA branding, собирает debug APK и прикрепляет его к запуску как artifact.
-
-Перед первым запуском добавь в **Settings → Secrets and variables → Actions → New repository secret** три секрета:
-
-- `LIQRA_API_ID` — числовой Telegram API ID.
+Required repository secrets:
+- `LIQRA_API_ID` — numeric Telegram API ID.
 - `LIQRA_API_HASH` — Telegram API hash.
-- `LIQRA_GOOGLE_SERVICES_JSON_BASE64` — содержимое файла `google-services.json`, закодированное в Base64. Firebase-конфигурация должна содержать Android-приложения с ID `com.liqra.messenger` и `com.liqra.messenger.beta`.
 
-После добавления секретов открой **Actions → Build LIQRA APK → Run workflow**. APK будет доступен в разделе Artifacts завершённого запуска. Любое изменение в `LIQRA-Android/**` также запускает сборку автоматически.
+Start it from **Actions → Build LIQRA Android (AyuGram) → Run workflow**, selecting
+the `liqra-android-ayugram` branch. The workflow creates a universal debug APK
+and uploads it as `LIQRA-AyuGram-Android-debug`.
 
-Это debug APK для тестирования, не подписанный production-релиз. Liquid Glass пока добавлен как ресурсная основа, а не как полностью переработанный интерфейс всех экранов. Функции AyuGram в этой сборке не заявлены.
+The build uses the standard Android debug signing key. It is for testing, not a
+production-signed release.
+
+## Current scope
+
+The build configuration applies LIQRA package/name branding, disables the upstream
+Firebase project integration, and supplies the missing message serialization adapter.
+A successful CI build is still required before calling this APK installable. Liquid
+Glass UI work is a separate next stage; this branch does not claim the entire AyuGram
+interface has already been redesigned.
