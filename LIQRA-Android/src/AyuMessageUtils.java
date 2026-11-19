@@ -216,7 +216,7 @@ public final class AyuMessageUtils {
 
     private static byte[] serializeVector(Object value) {
         if (!(value instanceof Iterable<?>)) return null;
-        ArrayList<?> items = new ArrayList<>();
+        ArrayList<Object> items = new ArrayList<>();
         for (Object item : (Iterable<?>) value) items.add(item);
         SerializedData data = new SerializedData();
         data.writeInt32(VECTOR_MAGIC);
