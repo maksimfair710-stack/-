@@ -1,0 +1,7 @@
+{
+  "appName": "LIQRA",
+  "applicationId": "com.liqra.messenger",
+  "apiId": 0,
+  "apiHash": "PASTE_YOUR_API_HASH_HERE",
+  "telegramRepository": "https://github.com/DrKLO/Telegram.git"
+}
