@@ -4,16 +4,19 @@ set -euo pipefail
 ROOT="$1"
 ROOT="$(cd "$ROOT" && pwd)"
 WORKSPACE="$GITHUB_WORKSPACE"
-PATCH_SOURCE="$WORKSPACE/LIQRA-Android/src/AyuMessageUtils.java"
-DEST="$ROOT/TMessagesProj/src/main/java/com/radolyn/ayugram/proprietary/AyuMessageUtils.java"
+PATCH_SOURCE="$WORKSPACE/LIQRA-Android/src"
+DEST="$ROOT/TMessagesProj/src/main/java/com/radolyn/ayugram/proprietary"
 
 test -f "$ROOT/gradlew" || { echo "AyuGram source checkout is incomplete"; exit 1; }
-test -f "$PATCH_SOURCE" || { echo "Missing LIQRA AyuMessageUtils adapter"; exit 1; }
+for CLASS in AyuMessageUtils AyuHistoryHook; do
+  test -f "$PATCH_SOURCE/$CLASS.java" || { echo "Missing LIQRA $CLASS implementation"; exit 1; }
+done
 
-# Do not initialize or retain the upstream private submodule.
-rm -rf "$ROOT/TMessagesProj/src/main/java/com/radolyn/ayugram/proprietary"
-mkdir -p "$(dirname "$DEST")"
-cp "$PATCH_SOURCE" "$DEST"
+# Replace the private upstream submodule with the public GPL compatibility sources.
+rm -rf "$DEST"
+mkdir -p "$DEST"
+cp "$PATCH_SOURCE/AyuMessageUtils.java" "$DEST/AyuMessageUtils.java"
+cp "$PATCH_SOURCE/AyuHistoryHook.java" "$DEST/AyuHistoryHook.java"
 rm -f "$ROOT/.gitmodules"
 
 python3 - "$ROOT" <<'PY'
