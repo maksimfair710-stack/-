@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="\${1:?Usage: patch-ayugram.sh /path/to/AyuGram4A}"
+ROOT="$1"
 ROOT="$(cd "$ROOT" && pwd)"
-WORKSPACE="\${GITHUB_WORKSPACE:-$(pwd)}"
+WORKSPACE="$GITHUB_WORKSPACE"
 PATCH_SOURCE="$WORKSPACE/LIQRA-Android/src/AyuMessageUtils.java"
 DEST="$ROOT/TMessagesProj/src/main/java/com/radolyn/ayugram/proprietary/AyuMessageUtils.java"
 
@@ -51,8 +51,10 @@ text, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
 if count != 1:
     raise SystemExit("Could not update AyuGram variant filter")
 
-text = text.replace('outputFileName = "ayuGram-\${buildType}\${abi}-\${formattedDate}.apk"',
-                    'outputFileName = "LIQRA-\${buildType}\${abi}-\${formattedDate}.apk"')
+dollar = chr(36)
+old_name = "ayuGram-" + dollar + "{buildType}" + dollar + "{abi}-" + dollar + "{formattedDate}.apk"
+new_name = "LIQRA-" + dollar + "{buildType}" + dollar + "{abi}-" + dollar + "{formattedDate}.apk"
+text = text.replace(old_name, new_name)
 text = text.replace("apply plugin: 'com.google.gms.google-services'", "")
 text = text.replace("apply plugin: 'com.google.firebase.crashlytics'", "")
 build.write_text(text, encoding="utf-8")
